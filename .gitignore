@@ -1,0 +1,15 @@
+# dados (baixar do Kaggle; ver README)
+data/raw/*.csv
+data/processed/*.parquet
+data/chroma/
+
+# segredos
+.env
+*.key
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/

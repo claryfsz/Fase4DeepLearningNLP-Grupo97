@@ -1,0 +1,4 @@
+pandas>=2.2
+pyarrow>=15
+chromadb>=1.0
+sentence-transformers>=3.0
