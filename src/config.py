@@ -3,6 +3,7 @@
 MC e L importam daqui para garantir que a base e o pipeline usem
 exatamente o mesmo modelo de embeddings e a mesma coleção.
 """
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,12 +15,16 @@ REVIEWS_CSV = RAW_DIR / "olist_order_reviews_dataset.csv"
 ORDERS_CSV = RAW_DIR / "olist_orders_dataset.csv"
 ORDER_ITEMS_CSV = RAW_DIR / "olist_order_items_dataset.csv"
 PRODUCTS_CSV = RAW_DIR / "olist_products_dataset.csv"
-CATEGORY_TRANSLATION_CSV = RAW_DIR / "product_category_name_translation.csv"
+KAGGLE_URL = "https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce"
+ARQUIVOS_NECESSARIOS = [REVIEWS_CSV, ORDERS_CSV, ORDER_ITEMS_CSV, PRODUCTS_CSV]
 DOCUMENTS_PARQUET = PROCESSED_DIR / "documentos.parquet"
 EDA_REPORT = ROOT / "docs" / "relatorio_base.md"
 
 # Banco vetorial
-CHROMA_DIR = ROOT / "data" / "chroma"
+# No Windows, o ChromaDB falha ao abrir o índice HNSW em caminhos com acento
+# (ex.: "Área de Trabalho") ou dentro do OneDrive. Nesses casos, defina
+# VOC_CHROMA_DIR com um caminho simples, ex.: C:\chroma_voc
+CHROMA_DIR = Path(os.getenv("VOC_CHROMA_DIR", ROOT / "data" / "chroma"))
 COLLECTION_NAME = "avaliacoes_olist"
 
 # Embeddings

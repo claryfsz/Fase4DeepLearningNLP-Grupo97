@@ -11,7 +11,7 @@ A fonte principal é `olist_order_reviews_dataset.csv` (99.224 avaliações), po
 desafio trata do conteúdo textual das avaliações. Para enriquecer cada documento com
 contexto, juntamos também `olist_orders_dataset.csv` (datas de entrega),
 `olist_order_items_dataset.csv` e `olist_products_dataset.csv` (categoria do produto).
-Clientes, vendedores, pagamentos e geolocalização não entraram porque não acrescentam
+Clientes, vendedores, pagamentos, geolocalização e tradução das categorias não entraram porque não acrescentam
 informação relevante para as perguntas sobre a voz do cliente.
 
 ### Tratamento de valores ausentes
@@ -95,7 +95,7 @@ Os embeddings são gerados em lotes de 64 (`EMBEDDING_BATCH_SIZE`).
 - Não precisa de servidor: basta clonar o repo e rodar o script.
 - O id de cada documento é o `review_id`, o que permite citar e auditar cada evidência.
 
-Tempo de indexação na nossa máquina: **[preencher com a saída do `build_index`]**.
+Tempo de indexação na nossa máquina (CPU, sem GPU): **7 min 28 s** para os 36.510 documentos, cerca de 80 documentos por segundo. A maior parte desse tempo é a geração dos embeddings. Para iterar mais rápido durante o desenvolvimento, use `--amostra 5000`.
 
 ## Como reproduzir esta etapa
 
@@ -110,3 +110,109 @@ python -m src.build_index --amostra 5000   # alternativa rápida, estratificada 
 # 4. testar a recuperação sem LLM
 python -m scripts.testar_busca "produto chegou quebrado" --k 5 --nota-max 2
 ```
+
+## Estratégia de recuperação
+
+A recuperação fica em `src/retrieval.py`, na função `buscar_evidencias(pergunta)`. Cada
+decisão abaixo veio de um teste com a base completa (36.510 documentos), comparando com a
+versão anterior.
+
+### 1. Problema: perguntas amplas recuperam pelas palavras, não pelo sentido
+
+Busca simples (top-5, sem filtro) para *"Quais são os principais problemas relatados
+pelos clientes?"*:
+
+- similaridade do 1º resultado de apenas **0,878**;
+- o 1º resultado foi *"Problemas com os Correios"*, com **nota 5**, que bateu só pela
+  palavra "problemas";
+- outros resultados bateram pela palavra "cliente" (*"Sou cliente há anos..."*).
+
+Isso acontece porque a pergunta é abstrata e as avaliações são curtas e concretas. O
+modelo acaba se apoiando nas palavras em comum.
+
+### 2. Filtro de nota pelos metadados
+
+A função detecta a intenção da pergunta por palavras-chave:
+
+| Intenção | Exemplo | Filtro aplicado |
+|---|---|---|
+| Problema | "reclamações", "insatisfeitos", "defeito" | `score <= 2` |
+| Elogio | "elogiam", "recomendam", "satisfeitos" | `score >= 4` |
+| Neutra | demais perguntas | nenhum |
+
+Com top-30 e filtro `nota <= 2`, todas as 30 evidências passaram a ser reclamações reais.
+Mas a similaridade continuou baixa (0,864 a 0,877) e o viés das palavras permaneceu: vieram
+muitos "resolva meu problema" e nenhuma reclamação de produto com defeito.
+
+A nota 3 fica fora dos dois filtros por ser ambígua: mistura elogio e crítica no mesmo
+texto.
+
+### 3. Multi-query: expandir a pergunta em buscas concretas
+
+Perguntas amplas ("principais", "quais", "padrões", "mais frequentes") são expandidas em
+subconsultas concretas, organizadas em 5 temas: entrega, qualidade, atendimento, pedido
+errado/incompleto e financeiro. Exemplos de subconsultas: *"produto chegou quebrado"*,
+*"não consigo contato com a loja, ninguém responde"*, *"cancelei a compra e não recebi o
+estorno"*.
+
+- Se a pergunta cita um tema ("problemas de **entrega**"), usa só as subconsultas desse
+  tema.
+- Perguntas específicas ("produto chegou quebrado") não são expandidas, porque já atingem
+  ~0,96.
+- O parâmetro `subconsultas` permite trocar o dicionário por subconsultas geradas pelo LLM.
+
+Resultado: a similaridade das evidências subiu de **~0,87 para 0,94 a 0,97**.
+
+### 4. Seleção em rodízio entre as consultas
+
+A primeira versão juntava os resultados de todas as subconsultas e cortava os 30 mais
+similares. O teste mostrou que esse corte global **eliminava temas inteiros**:
+
+| Pergunta | Corte global | Rodízio |
+|---|---|---|
+| Principais problemas | atendimento e financeiro com **0** evidências | **11 de 11** consultas, 2 a 3 evidências cada |
+| O que mais elogiam | atendimento com **0** evidências | **9 de 9** consultas, 3 a 4 evidências cada |
+
+A causa: avaliações curtas e literais (*"Produto não entregue"*, 0,96) vencem relatos mais
+longos sobre atendimento (~0,93). Mas "atendimento que não responde" era justamente a
+reclamação mais frequente na busca simples.
+
+No rodízio, cada consulta contribui com seu melhor resultado, depois com o segundo melhor,
+e assim por diante até completar `k_final = 30`. Avaliações encontradas por mais de uma
+consulta aparecem uma vez só, com o campo `encontrada_por` listando as consultas.
+
+### 5. Detecção de perguntas fora do escopo
+
+O modelo e5 dá similaridades altas mesmo para textos sem relação, então o limiar foi
+calibrado com testes reais:
+
+| Tipo de pergunta | Similaridade do 1º resultado |
+|---|---|
+| Fora do escopo (*"qual a capital da França?"*) | 0,825 a 0,836 |
+| Ampla (*"principais problemas"*, *"o que mais elogiam"*) | 0,867 a 0,892 |
+| Específica (*"produto chegou quebrado"*) | 0,95 a 0,97 |
+
+**Limiar de escopo: 0,85.** O limiar é aplicado só à **pergunta original**, nunca às
+subconsultas, que sempre encontram algo. Abaixo dele, a função devolve
+`status = "sem_evidencia"` sem nenhuma avaliação, e o LLM não é chamado.
+
+Um caso curioso: para "capital da França", a busca devolveu avaliações sobre **capinha** de
+celular. Sem nada relevante na base, o modelo se apegou à semelhança da palavra. Esse é o
+motivo de não mandar o top-k direto para o LLM sem um critério de corte.
+
+Também são descartadas evidências individuais com similaridade abaixo de 0,85. Se sobrarem
+menos de 3, o status é `evidencia_insuficiente`.
+
+### Limitações conhecidas
+
+- **Margem estreita:** só ~0,03 separa a pergunta fora do escopo (0,836) da pergunta ampla
+  mais fraca (0,867). Uma pergunta fora do escopo que use palavras da base (*"principais
+  problemas da economia brasileira"*) pode passar. Por isso existe uma segunda camada no
+  prompt: o LLM é instruído a recusar quando as evidências não tratam da pergunta.
+- **O rodízio não mede frequência:** como cada tema recebe uma cota parecida, o número de
+  evidências por tema não indica qual problema é mais comum. O indício de volume está no
+  campo `n_duplicatas` (ex.: *"Produto não entregue"* aparece 13 vezes).
+- **Intenção por palavras-chave:** é simples e transparente, mas pode errar em perguntas
+  com negação ou ironia.
+- **Lojas anonimizadas:** nomes como "lannister" e "stark" nos textos são a anonimização
+  dos vendedores feita pela própria Olist, não um erro de dado.

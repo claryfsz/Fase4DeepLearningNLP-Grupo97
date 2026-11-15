@@ -53,18 +53,21 @@ def _formatar_categoria(nome) -> str:
     return str(nome).replace("_", " ").strip()
 
 
-def carregar_metadados_pedidos() -> pd.DataFrame | None:
-    """Junta pedidos, itens e produtos para obter categoria e entrega por order_id.
+def verificar_arquivos() -> None:
+    """Interrompe com uma mensagem clara se faltar algum CSV em data/raw."""
+    faltando = [p.name for p in config.ARQUIVOS_NECESSARIOS if not p.exists()]
+    if faltando:
+        lista = "\n".join(f"  - {nome}" for nome in faltando)
+        raise SystemExit(
+            f"\n[erro] Arquivo(s) não encontrado(s) em {config.RAW_DIR}:\n{lista}\n\n"
+            f"Baixe o dataset em {config.KAGGLE_URL}\n"
+            f"(é preciso fazer login no Kaggle), descompacte e copie esses arquivos\n"
+            f"para a pasta data/raw/. Veja a seção \"Dados\" do README.\n"
+        )
 
-    Retorna None se os CSVs extras não estiverem em data/raw (a base
-    funciona sem eles, só fica com categoria/entrega "desconhecida").
-    """
-    necessarios = [config.ORDERS_CSV, config.ORDER_ITEMS_CSV, config.PRODUCTS_CSV]
-    if not all(p.exists() for p in necessarios):
-        faltando = [p.name for p in necessarios if not p.exists()]
-        print(f"[aviso] CSVs ausentes, metadados de pedido ignorados: {faltando}")
-        return None
 
+def carregar_metadados_pedidos() -> pd.DataFrame:
+    """Junta pedidos, itens e produtos para obter categoria e entrega por order_id."""
     orders = pd.read_csv(
         config.ORDERS_CSV,
         parse_dates=["order_purchase_timestamp", "order_delivered_customer_date",
@@ -102,6 +105,7 @@ def carregar_metadados_pedidos() -> pd.DataFrame | None:
 # --------------------------------------------------------------- pipeline
 def preparar_base() -> tuple[pd.DataFrame, dict]:
     stats: dict = {}
+    verificar_arquivos()
 
     df = pd.read_csv(config.REVIEWS_CSV)
     stats["total_avaliacoes"] = len(df)
@@ -137,9 +141,7 @@ def preparar_base() -> tuple[pd.DataFrame, dict]:
     # 6) metadados
     df["data"] = pd.to_datetime(df["review_creation_date"]).dt.strftime("%Y-%m-%d")
     df["ano_mes"] = df["data"].str[:7]
-    meta = carregar_metadados_pedidos()
-    if meta is not None:
-        df = df.merge(meta, on="order_id", how="left")
+    df = df.merge(carregar_metadados_pedidos(), on="order_id", how="left")
     for col, padrao in [("categoria", "desconhecida"), ("entrega", "desconhecida"),
                         ("status_pedido", "desconhecido")]:
         if col not in df:
