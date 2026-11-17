@@ -8,8 +8,6 @@ perguntas em linguagem natural sobre as avaliações de clientes do
 e receberem respostas **fundamentadas em avaliações reais**, com as evidências citadas.
 Quando a base não tem informação suficiente, o sistema diz isso em vez de inventar.
 
-- **Integrantes:** _preencher nomes_
-- **Vídeo de apresentação:** _colar o link_
 
 ## Arquitetura
 
@@ -315,7 +313,7 @@ pipeline (`docs/contrato_mc_l.md`) e devolve `resposta`, `evidencias` e `status`
 2. **Construção do contexto:** cada avaliação vira uma entrada numerada, com nota, categoria,
    situação da entrega e, quando o texto se repete, "aparece N vezes". Esse campo é o único
    indício de volume que o modelo recebe.
-3. **Geração:** o Claude recebe a pergunta e o contexto com `temperature=0` e um prompt de
+3. **Geração:** o Claude recebe a pergunta, o contexto e um prompt de
    sistema que o obriga a usar só o contexto, citar `[n]`, não inventar contagens ou
    percentuais e recusar quando as avaliações não tratam da pergunta.
 4. **Rastreabilidade:** o código extrai os `[n]` realmente citados e devolve só essas
@@ -376,7 +374,7 @@ brasileira*).
 | Limiar de escopo de 0,85 calibrado com testes | Separa perguntas fora do escopo (0,83 a 0,84) das amplas (0,87 ou mais) |
 | Duas camadas contra resposta sem base | O limiar sozinho tem margem estreita; o prompt cobre os casos que passam por ele |
 | Citações numeradas validadas em código | Garante que toda evidência exibida existe no contexto enviado ao modelo |
-| `temperature=0` | Respostas reproduzíveis e menos propensas a invenção |
+
 
 ## Limitações
 
@@ -398,3 +396,7 @@ brasileira*).
 ├── .env.example            # modelo do arquivo de chave da API
 └── requirements.txt
 ```
+## Integrantes
+
+Maria Clara Ferreira RM: 371497
+Luiz Eduardo Oliveira RM: 374244

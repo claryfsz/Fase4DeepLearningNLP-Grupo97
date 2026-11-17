@@ -28,7 +28,7 @@ except ImportError:  # pragma: no cover
     pass
 
 MODELO = os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5")
-MAX_TOKENS = 900
+MAX_TOKENS = 1500
 MARCADOR_RECUSA = "SEM_EVIDENCIA"
 
 MSG_SEM_EVIDENCIA = (
@@ -52,7 +52,7 @@ Não invente contagens, percentuais ou ranking de frequência que o contexto nã
 responda apenas com a palavra {MARCADOR_RECUSA} na primeira linha, seguida de uma frase curta \
 dizendo o que falta. Não tente responder assim mesmo.
 5. Se houver poucas evidências, diga isso explicitamente e evite generalizar.
-6. Responda em português, de forma objetiva (até ~200 palavras), sem repetir as avaliações inteiras."""
+6. Responda em português, de forma objetiva: no máximo 180 palavras e no máximo 4 temas, sem repetir as avaliações inteiras. Cite no máximo 3 evidências por tema."""
 
 
 # ------------------------------------------------------------------ contexto
@@ -101,7 +101,6 @@ def gerar_resposta(pergunta: str, evidencias: list[dict], status: str, cliente=N
     msg = cliente.messages.create(
         model=MODELO,
         max_tokens=MAX_TOKENS,
-        temperature=0,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": montar_mensagem_usuario(pergunta, evidencias, status)}],
     )
@@ -140,6 +139,7 @@ def responder(pergunta: str, cliente=None, **opcoes_busca) -> dict:
         return {**base, "status": "sem_evidencia", "resposta": resposta,
                 "evidencias": [], "evidencias_citadas": []}
 
-    citadas = [evidencias[n - 1] for n in extrair_citacoes(texto, len(evidencias))]
+    # "ref" = número [n] usado no texto da resposta, para ligar a citação à evidência
+    citadas = [{**evidencias[n - 1], "ref": n} for n in extrair_citacoes(texto, len(evidencias))]
     return {**base, "status": busca["status"], "resposta": texto,
             "evidencias": evidencias, "evidencias_citadas": citadas}

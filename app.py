@@ -47,5 +47,5 @@ if st.button("Perguntar", type="primary") and pergunta.strip():
     with dir_:
         st.subheader(f"Evidências citadas ({len(r['evidencias_citadas'])})")
         for e in r["evidencias_citadas"]:
-            st.markdown(f"**nota {e['score']}** · {e['categoria']} · entrega {e['entrega']} · "
+            st.markdown(f"**[{e['ref']}] nota {e['score']}** · {e['categoria']} · entrega {e['entrega']} · "
                         f"aparece {e['n_duplicatas']}x · `{e['review_id'][:8]}`\n\n> {e['texto']}")

@@ -17,7 +17,7 @@ def imprimir(r: dict) -> None:
     if r["evidencias_citadas"]:
         print("Evidências citadas:")
         for e in r["evidencias_citadas"]:
-            print(f"  - ({e['review_id'][:8]}) nota {e['score']} | {e['categoria']} | "
+            print(f"  [{e['ref']}] ({e['review_id'][:8]}) nota {e['score']} | {e['categoria']} | "
                   f"entrega {e['entrega']} | x{e['n_duplicatas']}: {e['texto'][:160]}")
 
 

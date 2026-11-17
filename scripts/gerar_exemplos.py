@@ -34,7 +34,7 @@ def main():
         if r["evidencias_citadas"]:
             linhas += ["**Evidências citadas:**", ""]
             for e in r["evidencias_citadas"]:
-                linhas.append(f"- `{e['review_id'][:8]}` · nota {e['score']} · {e['categoria']} · "
+                linhas.append(f"- **[{e['ref']}]** `{e['review_id'][:8]}` · nota {e['score']} · {e['categoria']} · "
                               f"entrega {e['entrega']} · aparece {e['n_duplicatas']}x: \"{e['texto']}\"")
             linhas.append("")
     SAIDA.write_text("\n".join(linhas), encoding="utf-8")
