@@ -1,11 +1,11 @@
-"""Geração de embeddings e indexação no ChromaDB (parte da MC).
+"""Geração de embeddings e indexação no ChromaDB (parte da Maria Clara).
 
 Uso:
     python -m src.build_index                 # indexa todos os documentos
     python -m src.build_index --amostra 5000  # amostra estratificada por nota
 
 A coleção é persistida em data/chroma e usa distância cosseno.
-Cada documento guarda o texto e os metadados combinados com a L:
+Cada documento guarda o texto e os metadados combinados com o pipeline:
 review_id, score, data, categoria (+ ano_mes, entrega, dias_atraso,
 status_pedido, n_duplicatas).
 """

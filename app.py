@@ -2,9 +2,21 @@
 
 Uso:  streamlit run app.py
 """
+import pandas as pd
 import streamlit as st
 
+from src import config
 from src.rag import responder
+
+
+@st.cache_data
+def listar_categorias() -> list[str]:
+    """Categorias existentes na base, para evitar filtro com nome digitado errado."""
+    try:
+        cats = pd.read_parquet(config.DOCUMENTS_PARQUET, columns=["categoria"])["categoria"]
+    except Exception:  # base ainda não preparada
+        return []
+    return sorted(c for c in cats.unique() if c != "desconhecida")
 
 st.set_page_config(page_title="Voice of Customer RAG", layout="wide")
 st.title("Voice of Customer Intelligence")
@@ -19,7 +31,12 @@ EXEMPLOS = [
 with st.sidebar:
     st.subheader("Filtros (opcional)")
     entrega = st.selectbox("Situação da entrega", ["(todas)", "no_prazo", "atrasada", "nao_entregue"])
-    categoria = st.text_input("Categoria (ex.: beleza saude)")
+    categorias = listar_categorias()
+    if categorias:
+        categoria = st.selectbox("Categoria", ["(todas)"] + categorias)
+        categoria = "" if categoria == "(todas)" else categoria
+    else:
+        categoria = st.text_input("Categoria (ex.: beleza saude)")
     st.subheader("Exemplos")
     exemplo = st.radio("Escolha para preencher", ["(nenhum)"] + EXEMPLOS)
 

@@ -1,4 +1,4 @@
-"""Preparação da base de conhecimento (parte da MC).
+"""Preparação da base de conhecimento (parte da Maria Clara).
 
 Etapas:
 1. Seleção: carrega as avaliações (olist_order_reviews_dataset.csv).

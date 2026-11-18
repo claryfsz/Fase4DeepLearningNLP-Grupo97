@@ -1,6 +1,6 @@
 """Recuperação de evidências para o pipeline RAG.
 
-Função principal: `buscar_evidencias(pergunta)`, chamada pela L dentro de `responder()`.
+Função principal: `buscar_evidencias(pergunta)`, chamada pelo pipeline dentro de `responder()`.
 
 Estratégia:
 1. Intenção: detecta se a pergunta é sobre problemas (filtra nota <= 2), elogios
@@ -176,7 +176,7 @@ def buscar_evidencias(
         k_por_consulta: resultados por subconsulta (limita a dominância de um tema).
         filtros_extras: filtros de metadados, ex. {"categoria": "beleza saude"},
             {"entrega": "atrasada"}, {"ano_mes": "2018-03"}.
-        subconsultas: permite que a L passe subconsultas geradas pelo LLM;
+        subconsultas: permite que o pipeline passe subconsultas geradas pelo LLM;
             se None, usa a expansão por dicionário de temas.
         usar_filtro_nota: desliga o filtro automático de nota.
 

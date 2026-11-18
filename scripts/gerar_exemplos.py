@@ -17,6 +17,8 @@ PERGUNTAS = [
     # sem evidência suficiente / fora do escopo
     "Qual é a capital da França?",
     "Quais são os principais problemas da economia brasileira?",
+    # passa do limiar (0,862), mas a base não responde: 2ª camada, recusa do modelo
+    "Quais problemas os clientes relatam ao pagar com Pix?",
 ]
 SAIDA = Path(__file__).resolve().parents[1] / "docs" / "exemplos_perguntas_respostas.md"
 

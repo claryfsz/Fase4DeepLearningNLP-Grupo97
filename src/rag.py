@@ -1,4 +1,4 @@
-"""Pipeline RAG completo (parte da L): pergunta -> evidências -> contexto -> Claude.
+"""Pipeline RAG completo (parte do Luiz Eduardo): pergunta -> evidências -> contexto -> Claude.
 
 Fluxo:
     pergunta -> buscar_evidencias (embeddings + Chroma, src/retrieval.py)
@@ -52,7 +52,9 @@ Não invente contagens, percentuais ou ranking de frequência que o contexto nã
 responda apenas com a palavra {MARCADOR_RECUSA} na primeira linha, seguida de uma frase curta \
 dizendo o que falta. Não tente responder assim mesmo.
 5. Se houver poucas evidências, diga isso explicitamente e evite generalizar.
-6. Responda em português, de forma objetiva: no máximo 180 palavras e no máximo 4 temas, sem repetir as avaliações inteiras. Cite no máximo 3 evidências por tema."""
+6. Responda em português, de forma objetiva: no máximo 180 palavras e no máximo 4 temas, sem repetir as avaliações inteiras. Cite no máximo 3 evidências por tema.
+7. Cite somente avaliações que sustentam o que você afirma. Se alguma avaliação do contexto não \
+tiver relação com a pergunta, apenas ignore-a: não a cite nem comente que ela não se aplica."""
 
 
 # ------------------------------------------------------------------ contexto
@@ -84,6 +86,22 @@ def extrair_citacoes(texto: str, n_evidencias: int) -> list[int]:
     return sorted(n for n in citados if 1 <= n <= n_evidencias)
 
 
+# o marcador precisa abrir a resposta (só formatação antes: **, #, aspas...)
+_RE_RECUSA = re.compile(r"^[\s*_#>\"'`-]*SEM[_ ]EVID[EÊ]NCIA\b[\s*_\"'`]*", re.IGNORECASE)
+
+
+def detectar_recusa(texto: str) -> str | None:
+    """Se a 1ª linha não vazia traz o marcador de recusa, devolve o motivo (pode ser "").
+
+    Aceita variações de formatação do modelo: "**SEM_EVIDENCIA**", "SEM EVIDÊNCIA:", etc.
+    Devolve None quando a resposta não é uma recusa.
+    """
+    m = _RE_RECUSA.match(texto.strip())
+    if m is None:
+        return None
+    return texto.strip()[m.end():].lstrip(" *:.—-\n").strip()
+
+
 # --------------------------------------------------------------------- LLM
 def _cliente():
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -109,7 +127,7 @@ def gerar_resposta(pergunta: str, evidencias: list[dict], status: str, cliente=N
 
 # --------------------------------------------------------------- pipeline
 def responder(pergunta: str, cliente=None, **opcoes_busca) -> dict:
-    """Contrato combinado com a MC: {"resposta", "evidencias", "status"} + extras.
+    """Contrato combinado com a Maria Clara (docs/contrato_base_pipeline.md): {"resposta", "evidencias", "status"} + extras.
 
     status: "ok" | "evidencia_insuficiente" | "sem_evidencia"
     `opcoes_busca` repassa filtros à recuperação (ex.: filtros_extras={"entrega": "atrasada"}).
@@ -133,8 +151,9 @@ def responder(pergunta: str, cliente=None, **opcoes_busca) -> dict:
     texto = gerar_resposta(pergunta, evidencias, busca["status"], cliente)
 
     # Camada 2: o próprio modelo recusou por falta de aderência
-    if texto.upper().startswith(MARCADOR_RECUSA):
-        motivo = texto[len(MARCADOR_RECUSA):].lstrip(" :.-\n")
+    recusa = detectar_recusa(texto)
+    if recusa is not None:
+        motivo = recusa
         resposta = MSG_SEM_EVIDENCIA + (f"\n\nMotivo: {motivo}" if motivo else "")
         return {**base, "status": "sem_evidencia", "resposta": resposta,
                 "evidencias": [], "evidencias_citadas": []}

@@ -273,8 +273,9 @@ calibrado com testes reais:
 
 | Tipo de pergunta | Similaridade do 1º resultado |
 |---|---|
-| Fora do escopo (*"qual a capital da França?"*) | 0,825 a 0,836 |
-| Ampla (*"principais problemas"*, *"o que mais elogiam"*) | 0,867 a 0,892 |
+| Fora do escopo (*"qual a capital da França?"*) | 0,812 a 0,836 |
+| Fora do escopo com palavras da base (*"principais problemas da economia brasileira?"*) | 0,849 |
+| Ampla (*"clientes insatisfeitos"*, *"principais problemas"*, *"o que mais elogiam"*) | 0,861 a 0,892 |
 | Específica (*"produto chegou quebrado"*) | 0,95 a 0,97 |
 
 **Limiar de escopo: 0,85.** O limiar é aplicado só à **pergunta original**, nunca às
@@ -290,9 +291,10 @@ menos de 3, o status é `evidencia_insuficiente`.
 
 ### Limitações conhecidas
 
-- **Margem estreita:** só ~0,03 separa a pergunta fora do escopo (0,836) da pergunta ampla
-  mais fraca (0,867). Uma pergunta fora do escopo que use palavras da base (*"principais
-  problemas da economia brasileira"*) pode passar. Por isso existe uma segunda camada no
+- **Margem estreita:** só ~0,012 separa a pergunta fora do escopo mais alta (*"economia
+  brasileira"*, 0,849) da pergunta ampla mais fraca (*"clientes insatisfeitos"*, 0,861). A
+  pergunta sobre economia foi barrada por apenas 0,0006 abaixo do limiar: perguntas fora do
+  escopo que usam palavras da base podem passar. Por isso existe uma segunda camada no
   prompt: o LLM é instruído a recusar quando as evidências não tratam da pergunta.
 - **O rodízio não mede frequência:** como cada tema recebe uma cota parecida, o número de
   evidências por tema não indica qual problema é mais comum. O indício de volume está no
@@ -306,7 +308,7 @@ menos de 3, o status é `evidencia_insuficiente`.
 ## Pipeline RAG (geração)
 
 A função `responder(pergunta)` em `src/rag.py` segue o contrato combinado entre a base e o
-pipeline (`docs/contrato_mc_l.md`) e devolve `resposta`, `evidencias` e `status`, mais
+pipeline (`docs/contrato_base_pipeline.md`) e devolve `resposta`, `evidencias` e `status`, mais
 `evidencias_citadas`, `intencao`, `consultas` e `similaridade_pergunta` para a demonstração.
 
 1. **Recuperação:** `buscar_evidencias` (seção anterior) devolve até 30 avaliações.
@@ -371,14 +373,14 @@ brasileira*).
 | Agrupar textos idênticos e guardar `n_duplicatas` | Evita que "Muito bom" (371 cópias) ocupe o top-k, sem perder a noção de volume |
 | Filtro de nota por intenção da pergunta | Faz perguntas sobre problemas recuperarem só avaliações de nota ≤ 2 |
 | Multi-query + seleção em rodízio | Perguntas amplas recuperam pelas palavras; subconsultas concretas elevam a similaridade de ~0,87 para 0,94 a 0,97 e garantem cobertura de todos os temas |
-| Limiar de escopo de 0,85 calibrado com testes | Separa perguntas fora do escopo (0,83 a 0,84) das amplas (0,87 ou mais) |
+| Limiar de escopo de 0,85 calibrado com testes | Separa perguntas fora do escopo (0,812 a 0,849) das amplas (0,861 ou mais) |
 | Duas camadas contra resposta sem base | O limiar sozinho tem margem estreita; o prompt cobre os casos que passam por ele |
 | Citações numeradas validadas em código | Garante que toda evidência exibida existe no contexto enviado ao modelo |
 
 
 ## Limitações
 
-- O limiar de escopo tem margem estreita e depende de palavras-chave de intenção e de tema.
+- O limiar de escopo tem margem estreita (0,849 fora do escopo × 0,861 na pergunta válida mais fraca) e depende de palavras-chave de intenção e de tema.
 - O rodízio entre temas não mede frequência: o volume só aparece por `n_duplicatas`.
 - Só 36,8% das avaliações têm texto; o restante tem apenas nota e não entra na base.
 - A nota 3 fica fora dos filtros de problema e elogio por ser ambígua.

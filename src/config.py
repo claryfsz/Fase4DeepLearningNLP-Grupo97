@@ -1,6 +1,6 @@
 """Configurações centrais do projeto (caminhos, modelo e coleção vetorial).
 
-MC e L importam daqui para garantir que a base e o pipeline usem
+A base e o pipeline importam daqui para garantir que a base e o pipeline usem
 exatamente o mesmo modelo de embeddings e a mesma coleção.
 """
 import os

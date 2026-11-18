@@ -1,4 +1,4 @@
-"""Teste rápido da recuperação (sem LLM), para a MC validar o índice.
+"""Teste rápido da recuperação (sem LLM), para validar o índice.
 
 Uso:
     python -m scripts.testar_busca "atraso na entrega"

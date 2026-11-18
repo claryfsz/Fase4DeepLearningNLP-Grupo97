@@ -1,4 +1,4 @@
-# Base de conhecimento (seção do README, parte da MC)
+# Base de conhecimento (seção do README, parte da Maria Clara)
 
 > Texto pronto para colar no README.md. Os números vêm de `docs/relatorio_base.md`,
 > gerado por `python -m src.data_prep`.
@@ -188,8 +188,9 @@ calibrado com testes reais:
 
 | Tipo de pergunta | Similaridade do 1º resultado |
 |---|---|
-| Fora do escopo (*"qual a capital da França?"*) | 0,825 a 0,836 |
-| Ampla (*"principais problemas"*, *"o que mais elogiam"*) | 0,867 a 0,892 |
+| Fora do escopo (*"qual a capital da França?"*) | 0,812 a 0,836 |
+| Fora do escopo com palavras da base (*"principais problemas da economia brasileira?"*) | 0,849 |
+| Ampla (*"clientes insatisfeitos"*, *"principais problemas"*, *"o que mais elogiam"*) | 0,861 a 0,892 |
 | Específica (*"produto chegou quebrado"*) | 0,95 a 0,97 |
 
 **Limiar de escopo: 0,85.** O limiar é aplicado só à **pergunta original**, nunca às
@@ -205,9 +206,10 @@ menos de 3, o status é `evidencia_insuficiente`.
 
 ### Limitações conhecidas
 
-- **Margem estreita:** só ~0,03 separa a pergunta fora do escopo (0,836) da pergunta ampla
-  mais fraca (0,867). Uma pergunta fora do escopo que use palavras da base (*"principais
-  problemas da economia brasileira"*) pode passar. Por isso existe uma segunda camada no
+- **Margem estreita:** só ~0,012 separa a pergunta fora do escopo mais alta (*"economia
+  brasileira"*, 0,849) da pergunta ampla mais fraca (*"clientes insatisfeitos"*, 0,861). A
+  pergunta sobre economia foi barrada por apenas 0,0006 abaixo do limiar: perguntas fora do
+  escopo que usam palavras da base podem passar. Por isso existe uma segunda camada no
   prompt: o LLM é instruído a recusar quando as evidências não tratam da pergunta.
 - **O rodízio não mede frequência:** como cada tema recebe uma cota parecida, o número de
   evidências por tema não indica qual problema é mais comum. O indício de volume está no
